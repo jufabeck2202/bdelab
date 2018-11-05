@@ -1,8 +1,15 @@
-namespace java de.hska.iwi.bdelab.schema
+ namespace java de.hska.iwi.bdelab.schema
 
 union UserID {
   1: string user_id;
 }
+
+struct Website {
+  1: string url;
+  2: i64 nonce;
+  3: string time;
+}
+
 
 enum GenderType {
   MALE = 1,
@@ -13,6 +20,7 @@ union UserPropertyValue {
   1: string full_name;
   2: string email;
   3: GenderType gender;
+  4: Website site;
 }
 
 struct UserProperty {
