@@ -10,6 +10,11 @@ struct Website {
   3: string time;
 }
 
+struct PageView {
+  1: string ip;
+  2: string url;
+  3: string time;
+}
 
 enum GenderType {
   MALE = 1,
