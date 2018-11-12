@@ -1,0 +1,2 @@
+http://iwi-lkit-ux-06.hs-karlsruhe.de:8088/cluster/app/application_1541429278487_0001
+hadoop jar ~/bdeLab/lab1/target/bdelab1-0.0.1-SNAPSHOT-jar-with-dependencies.jar de.hska.iwi.bdelab.batchstore.Batchloader
