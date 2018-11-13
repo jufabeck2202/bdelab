@@ -106,10 +106,8 @@ public class Batchloader {
             // master pail goes to permanent fact store
             String masterPath = FileUtils.prepareMasterFactsPath(false, LOCAL);
 
-            //Pail pTemp = Pail.create(fs, newPath, new DataPailStructure());
-            //Pail pMaster = Pail.create(fs, masterPath, new DataPailStructure());
-            Pail<Data> pTemp = Pail.create(fs, newPath, PailFormatFactory.getDefaultCopy().setStructure(new DataPailStructure()));
-			Pail<Data> pMaster = Pail.create(fs, masterPath, PailFormatFactory.getDefaultCopy().setStructure(new DataPailStructure()));
+            Pail pTemp = Pail.create(fs, newPath, new DataPailStructure());
+
             
             ostemp = pTemp.openWrite();
             
@@ -118,6 +116,8 @@ public class Batchloader {
             
             ostemp.close();
             // set up master pail and absorb new pail
+            Pail pMaster = Pail.create(fs, masterPath, new DataPailStructure());
+
             pMaster.absorb(pTemp);
             pMaster.consolidate();
 
