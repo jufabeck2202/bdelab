@@ -7,21 +7,24 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.StringTokenizer;
 import java.util.stream.Stream;
-
 import de.hska.iwi.bdelab.schema.Data;
-import de.hska.iwi.bdelab.schema.PageView;
+import de.hska.iwi.bdelab.schema.DataUnit;
+import de.hska.iwi.bdelab.schema.PageViewEdge;
+import de.hska.iwi.bdelab.schema.Pedigree;
+import de.hska.iwi.bdelab.schema.UserID;
+import de.hska.iwi.bdelab.schema.Website;
 import manning.tap.DataPailStructure;
 
 import org.apache.hadoop.fs.FileSystem;
 
 import com.backtype.hadoop.pail.Pail;
+import com.backtype.hadoop.pail.PailFormatFactory;
 
 public class Batchloader {
 
     // ...
 
-    private Pail pTemp;
-    private Pail pMaster;
+
     Pail<Data>.TypedRecordOutputStream ostemp;
 
 	private void readPageviewsAsStream() {
@@ -38,7 +41,7 @@ public class Batchloader {
     }
 
     private Data getDatafromString(String pageview) {
-        Data result = null;
+        
 
         StringTokenizer tokenizer = new StringTokenizer(pageview);
         String ip = tokenizer.nextToken();
@@ -48,22 +51,30 @@ public class Batchloader {
         System.out.println(ip + " " + url + " " + time);
 
         // ... create Data
-        //create new Pave view
-        PageView pv = new PageView();
-        pv.set_ip(ip);
-        pv.set_time(time);
-        pv.set_url(url);
-        try {
-			ostemp.writeObject(pv);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
         
-       
+        //create new user
+        UserID userID = new UserID();
+		userID.set_user_id(ip);
 		
-        
-        
+		//create new Page
+		Website site = new Website();
+		site.set_url(url);
+		
+		//connect user to page 
+		PageViewEdge view = new PageViewEdge();
+		view.set_time(time);
+		view.set_page(site);
+		view.set_user(userID);
+		
+		Pedigree pedigree = new Pedigree( Integer.valueOf(time));
+		Data result = new Data();
+		DataUnit unit = new DataUnit();
+	
+		
+		unit.set_page_view(view);
+		result.set_pedigree(pedigree);
+		result.set_dataunit(unit);
+
         
 
         return result;
@@ -71,6 +82,12 @@ public class Batchloader {
 
     private void writeToPail(Data data) {
         // ...
+    	 try {
+ 			ostemp.writeObject(data);
+ 		} catch (IOException e) {
+ 			// TODO Auto-generated catch block
+ 			e.printStackTrace();
+ 		}
     }
 
     private void importPageviews() {
@@ -89,17 +106,19 @@ public class Batchloader {
             // master pail goes to permanent fact store
             String masterPath = FileUtils.prepareMasterFactsPath(false, LOCAL);
 
-            pTemp = Pail.create(fs, newPath, new DataPailStructure());
-            pMaster = Pail.create(fs, masterPath, new DataPailStructure());
+            //Pail pTemp = Pail.create(fs, newPath, new DataPailStructure());
+            //Pail pMaster = Pail.create(fs, masterPath, new DataPailStructure());
+            Pail<Data> pTemp = Pail.create(fs, newPath, PailFormatFactory.getDefaultCopy().setStructure(new DataPailStructure()));
+			Pail<Data> pMaster = Pail.create(fs, masterPath, PailFormatFactory.getDefaultCopy().setStructure(new DataPailStructure()));
+            
             ostemp = pTemp.openWrite();
             
             // write facts to new pail
             readPageviewsAsStream();
+            
             ostemp.close();
             // set up master pail and absorb new pail
-            System.out.println("vor");
             pMaster.absorb(pTemp);
-            System.out.println("danach");
             pMaster.consolidate();
 
         } catch (IOException e) {

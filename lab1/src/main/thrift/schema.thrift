@@ -6,13 +6,11 @@ union UserID {
 
 struct Website {
   1: string url;
-  2: i64 nonce;
-  3: string time;
 }
 
-struct PageView {
-  1: string ip;
-  2: string url;
+struct PageViewEdge {
+  1: required UserID user;
+  2: required Website page;
   3: string time;
 }
 
@@ -25,7 +23,6 @@ union UserPropertyValue {
   1: string full_name;
   2: string email;
   3: GenderType gender;
-  4: Website site;
 }
 
 struct UserProperty {
@@ -45,6 +42,7 @@ struct Pedigree {
 union DataUnit {
   1: UserProperty user_property;
   2: FriendEdge friend;
+  3: PageViewEdge page_view;
 }
 
 struct Data {
