@@ -204,8 +204,6 @@ hs_err_pid*
 
 ### BDELAB ###
 
-hadoop.properties
-
 # generated thrift classes will not be shipped
 **/de/hska/iwi/bdelab/schema/
 **/de/hska/iwi/bdelab/schema2/
