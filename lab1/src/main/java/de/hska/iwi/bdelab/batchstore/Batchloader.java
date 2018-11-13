@@ -91,14 +91,15 @@ public class Batchloader {
 
             pTemp = Pail.create(fs, newPath, new DataPailStructure());
             pMaster = Pail.create(fs, masterPath, new DataPailStructure());
-            
             ostemp = pTemp.openWrite();
             
             // write facts to new pail
             readPageviewsAsStream();
             ostemp.close();
             // set up master pail and absorb new pail
+            System.out.println("vor");
             pMaster.absorb(pTemp);
+            System.out.println("danach");
             pMaster.consolidate();
 
         } catch (IOException e) {
