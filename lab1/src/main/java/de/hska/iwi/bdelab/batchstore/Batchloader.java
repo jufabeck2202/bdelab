@@ -21,6 +21,7 @@ import com.backtype.hadoop.pail.Pail;
 import com.backtype.hadoop.pail.PailFormatFactory;
 
 public class Batchloader {
+	 private DataPailStructure pailStructure = new DataPailStructure();
 
     // ...
 
@@ -106,7 +107,7 @@ public class Batchloader {
             // master pail goes to permanent fact store
             String masterPath = FileUtils.prepareMasterFactsPath(false, LOCAL);
 
-            Pail pTemp = Pail.create(fs, newPath, new DataPailStructure());
+            Pail pTemp = Pail.create(fs, newPath, pailStructure);
 
             
             ostemp = pTemp.openWrite();
@@ -116,10 +117,10 @@ public class Batchloader {
             
             ostemp.close();
             // set up master pail and absorb new pail
-            Pail pMaster = Pail.create(fs, masterPath, new DataPailStructure());
+            Pail pMaster = Pail.create(fs, masterPath, pailStructure);
 
             pMaster.absorb(pTemp);
-            pMaster.consolidate();
+            //pMaster.consolidate();
 
         } catch (IOException e) {
             e.printStackTrace();
