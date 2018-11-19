@@ -2,7 +2,16 @@
 package de.hska.iwi.bdelab.batchjobs;
 
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Iterator;
+import java.util.Locale;
 
 import de.hska.iwi.bdelab.batchstore.FileUtils;
 import de.hska.iwi.bdelab.schema2.Data;
@@ -31,84 +40,92 @@ import com.backtype.hadoop.pail.PailFormat;
 import com.backtype.hadoop.pail.PailFormatFactory;
 import com.backtype.hadoop.pail.PailSpec;
 
-public class CountFacts {
+public class PageFacts {
 
-    public static class Map extends MapReduceBase implements Mapper<Text, BytesWritable, Text, IntWritable> {
-        private final static IntWritable one = new IntWritable(1);
-        private final static Text word = new Text("fact");
+	public static class Map extends MapReduceBase implements Mapper<Text, BytesWritable, Text, IntWritable> {
+		private final static IntWritable one = new IntWritable(1);
+		private final static Text word = new Text();
 
-        private transient TDeserializer des;
+		private transient TDeserializer des;
 
-        private TDeserializer getDeserializer() {
-            if (des == null) des = new TDeserializer();
-            return des;
-        }
-        
-        // helper method for deserializing de.hska.iwi.bdelab.schema2.Data objects (aka facts)
-        public Data deserialize(byte[] record) {
-            Data ret = new Data();
-            try {
-                getDeserializer().deserialize((TBase) ret, record);
-            } catch (TException e) {
-                throw new RuntimeException(e);
-            }
-            return ret;
-        }
+		private TDeserializer getDeserializer() {
+			if (des == null)
+				des = new TDeserializer();
+			return des;
+		}
 
-        // THE MAP FUNCTION
-        public void map(Text key, BytesWritable value, OutputCollector<Text, IntWritable> output, Reporter reporter)
-                throws IOException {
+		// helper method for deserializing de.hska.iwi.bdelab.schema2.Data objects (aka
+		// facts)
+		public Data deserialize(byte[] record) {
+			Data ret = new Data();
+			try {
+				getDeserializer().deserialize((TBase) ret, record);
+			} catch (TException e) {
+				throw new RuntimeException(e);
+			}
+			return ret;
+		}
 
-            // This is how to deserialize a fact (de.hska.iwi.bdelab.schema2.Data object) from incoming pail data
-            System.out.println(deserialize(value.getBytes()));
+		// THE MAP FUNCTION
+		public void map(Text key, BytesWritable value, OutputCollector<Text, IntWritable> output, Reporter reporter)
+				throws IOException {
+			Data data = deserialize(value.getBytes());
+			long dateInSec = data.get_pedigree().get_true_as_of_secs() * 1000L;
+			String page = data.get_dataunit().get_pageview().get_page().get_url();
+			SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.YYYY - HH");
+			Date date = new Date();
+			date.setTime(dateInSec);
+			System.out.println(date);
+			String timestamp = sdf.format(date);
+			System.out.println(timestamp);
+			word.set(timestamp + "  " + page);
 
-            // a static key results in a single partition on the reducer-side
-            output.collect(word, one);
-        }
-    }
+			// a static key results in a single partition on the reducer-side
+			output.collect(word, one);
+		}
+	}
 
-    public static class Reduce extends MapReduceBase implements Reducer<Text, IntWritable, Text, IntWritable> {
-        
-        // THE REDUCE FUNCTION
-        public void reduce(Text key, Iterator<IntWritable> values, OutputCollector<Text, IntWritable> output,
-                           Reporter reporter) throws IOException {
-            int sum = 0;
-            while (values.hasNext()) {
-                sum += values.next().get();
-            }
-            output.collect(key, new IntWritable(sum));
-        }
-    }
+	public static class Reduce extends MapReduceBase implements Reducer<Text, IntWritable, Text, IntWritable> {
 
-    public static void main(String[] args) throws Exception {
-        JobConf conf = new JobConf(CountFacts.class);
-        conf.setJobName("count facts");
+		// THE REDUCE FUNCTION
+		public void reduce(Text key, Iterator<IntWritable> values, OutputCollector<Text, IntWritable> output,
+				Reporter reporter) throws IOException {
+			int sum = 0;
+			while (values.hasNext()) {
+				sum += values.next().get();
+			}
+			output.collect(key, new IntWritable(sum));
+		}
+	}
 
-        conf.setOutputKeyClass(Text.class);
-        conf.setOutputValueClass(IntWritable.class);
+	public static void main(String[] args) throws Exception {
+		JobConf conf = new JobConf(PageFacts.class);
+		conf.setJobName("page-count");
 
-        conf.setMapperClass(Map.class);
-        conf.setCombinerClass(Reduce.class);
-        conf.setReducerClass(Reduce.class);
+		conf.setOutputKeyClass(Text.class);
+		conf.setOutputValueClass(IntWritable.class);
 
-        ////////////////////////////////////////////////////////////////////////////
-        // input as pails
-        PailSpec spec = PailFormatFactory.getDefaultCopy().setStructure(new DataPailStructure());
-        PailFormat format = PailFormatFactory.create(spec);
-        String masterPath = FileUtils.prepareMasterFactsPath(false,false);
-        //
-        conf.setInputFormat(format.getInputFormatClass());
-        FileInputFormat.setInputPaths(conf, new Path(masterPath));
-        ////////////////////////////////////////////////////////////////////////////
+		conf.setMapperClass(Map.class);
+		conf.setCombinerClass(Reduce.class);
+		conf.setReducerClass(Reduce.class);
 
-        ////////////////////////////////////////////////////////////////////////////
-        // output as text
-        conf.setOutputFormat(TextOutputFormat.class);
-        FileSystem fs = FileUtils.getFs(false);
-        FileOutputFormat.setOutputPath(conf, new Path(
-                FileUtils.getTmpPath(fs, "fact-count", true, false)));
-        ////////////////////////////////////////////////////////////////////////////
+		////////////////////////////////////////////////////////////////////////////
+		// input as pails
+		PailSpec spec = PailFormatFactory.getDefaultCopy().setStructure(new DataPailStructure());
+		PailFormat format = PailFormatFactory.create(spec);
+		String masterPath = FileUtils.prepareMasterFactsPath(false, false);
+		//
+		conf.setInputFormat(format.getInputFormatClass());
+		FileInputFormat.setInputPaths(conf, new Path(masterPath));
+		////////////////////////////////////////////////////////////////////////////
 
-        JobClient.runJob(conf);
-    }
+		////////////////////////////////////////////////////////////////////////////
+		// output as text
+		conf.setOutputFormat(TextOutputFormat.class);
+		FileSystem fs = FileUtils.getFs(false);
+		FileOutputFormat.setOutputPath(conf, new Path(FileUtils.getTmpPath(fs, "page-count", true, false)));
+		////////////////////////////////////////////////////////////////////////////
+
+		JobClient.runJob(conf);
+	}
 }

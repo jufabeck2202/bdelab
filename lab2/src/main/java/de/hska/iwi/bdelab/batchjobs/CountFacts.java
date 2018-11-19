@@ -82,7 +82,7 @@ public class CountFacts {
 
     public static void main(String[] args) throws Exception {
         JobConf conf = new JobConf(CountFacts.class);
-        conf.setJobName("count facts");
+        conf.setJobName("Page view");
 
         conf.setOutputKeyClass(Text.class);
         conf.setOutputValueClass(IntWritable.class);
