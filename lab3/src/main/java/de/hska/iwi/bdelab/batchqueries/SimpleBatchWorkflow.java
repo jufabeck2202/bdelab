@@ -16,21 +16,22 @@ import de.hska.iwi.bdelab.schema2.Data;
 import de.hska.iwi.bdelab.schema2.DataUnit;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 public class SimpleBatchWorkflow extends QueryBase {
 
-	// Move newData to master while preserving the newDataPail to keep receiving incoming data
+	// Move newData to master while preserving the newDataPail to keep receiving
+	// incoming data
 	@SuppressWarnings("rawtypes")
 	public static void ingest(Pail masterPail, Pail newDataPail) throws Exception {
-        FileSystem fs = FileUtils.getFs(false);
+		FileSystem fs = FileUtils.getFs(false);
 
-        // create snapshot from newPail
-		Pail snapshotPail = newDataPail.snapshot(
-		        FileUtils.getTmpPath(fs,"newDataSnapshot",true,false));
+		// create snapshot from newPail
+		Pail snapshotPail = newDataPail.snapshot(FileUtils.getTmpPath(fs, "newDataSnapshot", true, false));
 
 		// clone the snapshot
-		Pail snapshotCopy = snapshotPail.createEmptyMimic(
-		        FileUtils.getTmpPath(fs,"newDataSnapshotCopy",true,false));
+		Pail snapshotCopy = snapshotPail.createEmptyMimic(FileUtils.getTmpPath(fs, "newDataSnapshotCopy", true, false));
 		snapshotCopy.copyAppend(snapshotPail);
 
 		// absorb clone into master (the clone will be gone)
@@ -45,18 +46,54 @@ public class SimpleBatchWorkflow extends QueryBase {
 
 	@SuppressWarnings("rawtypes")
 	public static void normalizeURLs() throws IOException {
-		Tap masterDataset = dataTap(
-		        FileUtils.prepareMasterFactsPath(false,false));
-		Tap outTap = dataTap(
-		        FileUtils.prepareResultsPath("normalized-by-url", true, false));
+		Tap masterDataset = dataTap(FileUtils.prepareMasterFactsPath(false, false));
+		Tap outTap = dataTap(FileUtils.prepareResultsPath("normalized-by-url", true, false));
 
-		Api.execute(outTap, new Subquery("?raw").predicate(masterDataset, "_", "?raw")
-
-		///////////////////////////////////////////////////////////////
-		// HIER FEHLT DIE QUERY LOGIK !
-		///////////////////////////////////////////////////////////////
+		// "_" is a special field that will ignore the values for that field.
+		Api.execute(outTap,
+				new Subquery("?result").predicate(masterDataset, "_", "?raw").predicate(new ExtractPageViewFields(), "?raw")
+						.out("?url", "?time").predicate(new NormalizeUrl(), "?url").out("?normalized-url")
+						.predicate(new UpdateUrl(), "?normalized-url", "?raw").out("?result")
 
 		);
+	}
+
+	public static class UpdateUrl extends CascalogFunction {
+
+		@Override
+		public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
+			Data data = (Data) functionCall.getArguments().getObject(1);//Datum lesen
+			String url = (String) functionCall.getArguments().getObject(0);//normalisierte URL lesen
+			data.get_dataunit().get_pageview().get_page().set_url(url);//URL im Datum updaten
+			functionCall.getOutputCollector().add(new Tuple(data));//Datum 
+			System.out.println("URL:"+url);
+		}
+
+	}
+
+	public static class NormalizeUrl extends CascalogFunction {
+
+		@Override
+		public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
+			try {
+				URL rawUrl = new URL(functionCall.getArguments().getString(0));// rohe Url wird aus functionalCall
+																				// gelesen
+				URL normalizedUrl = new URL(rawUrl.getProtocol(), rawUrl.getHost(), rawUrl.getPath());// Bestandteile
+																										// der URL
+																										// werden
+																										// ermittelt und
+																										// zu einer
+																										// neuen URL
+																										// zusammengesetzt
+				functionCall.getOutputCollector().add(new Tuple(normalizedUrl.toExternalForm()));// Neues Tupel zur
+																									// Menge hinzufügen
+				System.out.println("NORM"+normalizedUrl);
+			} catch (MalformedURLException e) {
+				e.printStackTrace();
+				System.out.println("Ein Fehler ist aufgetreten");
+			}
+		}
+
 	}
 
 	@SuppressWarnings("serial")
@@ -100,14 +137,12 @@ public class SimpleBatchWorkflow extends QueryBase {
 
 	@SuppressWarnings("rawtypes")
 	public static void viewsPerHour() throws IOException {
-		Tap normalizedByUrl = dataTap(
-		        FileUtils.prepareResultsPath("normalized-by-url", false, false));
+		Tap normalizedByUrl = dataTap(FileUtils.prepareResultsPath("normalized-by-url", false, false));
 
 		// first query part aggregates views by url and hour
 		Subquery hourlyRollup = new Subquery("?url", "?hour-bucket", "?hour-count")
-				.predicate(normalizedByUrl, "_", "?fact")
-				.predicate(new ExtractPageViewFields(), "?fact").out("?url", "?time")
-				.predicate(new ToHour(), "?time").out("?hour-bucket")
+				.predicate(normalizedByUrl, "_", "?fact").predicate(new ExtractPageViewFields(), "?fact")
+				.out("?url", "?time").predicate(new ToHour(), "?time").out("?hour-bucket")
 				.predicate(new jcascalog.op.Count(), "?hour-count")
 				.predicate(new Debug(), "?url", "?hour-bucket", "?hour-count").out("?one");
 
@@ -121,12 +156,12 @@ public class SimpleBatchWorkflow extends QueryBase {
 
 	@SuppressWarnings("rawtypes")
 	public static void batchWorkflow() throws Exception {
-        // Hadoop konfigurieren
-        setApplicationConf();
+		// Hadoop konfigurieren
+		setApplicationConf();
 
 		// Init batch store pails
-		Pail masterPail = new Pail(FileUtils.prepareMasterFactsPath(false,false));
-		Pail newDataPail = new Pail(FileUtils.prepareNewFactsPath(false,false));
+		Pail masterPail = new Pail(FileUtils.prepareMasterFactsPath(false, false));
+		Pail newDataPail = new Pail(FileUtils.prepareNewFactsPath(false, false));
 
 		// Start workflow
 		ingest(masterPail, newDataPail);
