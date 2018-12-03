@@ -62,10 +62,14 @@ public class SimpleBatchWorkflow extends QueryBase {
 
 		@Override
 		public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
-			Data data = (Data) functionCall.getArguments().getObject(1);//Datum lesen
-			String url = (String) functionCall.getArguments().getObject(0);//normalisierte URL lesen
-			data.get_dataunit().get_pageview().get_page().set_url(url);//URL im Datum updaten
-			functionCall.getOutputCollector().add(new Tuple(data));//Datum 
+			//Data lesen aus input 1 lesen
+			Data data = (Data) functionCall.getArguments().getObject(1);
+			//normalisierte URL  aus dem input 0 lesen
+			String url = (String) functionCall.getArguments().getObject(0);
+			//URL im Data durch normalisierte URL ersetzen
+			data.get_dataunit().get_pageview().get_page().set_url(url);
+			//Data zurückgeben
+			functionCall.getOutputCollector().add(new Tuple(data));
 			System.out.println("URL:"+url);
 		}
 
@@ -76,19 +80,21 @@ public class SimpleBatchWorkflow extends QueryBase {
 		@Override
 		public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
 			try {
-				URL rawUrl = new URL(functionCall.getArguments().getString(0));// rohe Url wird aus functionalCall
-																				// gelesen
-				URL normalizedUrl = new URL(rawUrl.getProtocol(), rawUrl.getHost(), rawUrl.getPath());// Bestandteile
-																										// der URL
-																										// werden
-																										// ermittelt und
-																										// zu einer
-																										// neuen URL
-																										// zusammengesetzt
-				functionCall.getOutputCollector().add(new Tuple(normalizedUrl.toExternalForm()));// Neues Tupel zur
-																									// Menge hinzufügen
+				//rohe Url wird aus functionalCall 0  ausgelesen, verwenden der URL lib für normalisierung
+				URL rawUrl = new URL(functionCall.getArguments().getString(0));
+				
+				// Bestandteile der URL werden ermittelt und zu einer neuen URL zusammengesetzt 
+				// getProtocol -> protokoll der URL
+				//getHost -> host der URl
+				//
+				URL normalizedUrl = new URL(rawUrl.getProtocol(), rawUrl.getHost(), rawUrl.getPath());
+				// Neues Tupel zur Menge hinzufügen, 
+				//toExternalForm damit url zu einem String wird.
+				functionCall.getOutputCollector().add(new Tuple(normalizedUrl.toExternalForm()));
+				
 				System.out.println("NORM"+normalizedUrl);
 			} catch (MalformedURLException e) {
+				//Fehler behandlung
 				e.printStackTrace();
 				System.out.println("Ein Fehler ist aufgetreten");
 			}
@@ -100,6 +106,7 @@ public class SimpleBatchWorkflow extends QueryBase {
 	public static class ExtractPageViewFields extends CascalogFunction {
 		@SuppressWarnings("rawtypes")
 		public void operate(FlowProcess process, FunctionCall call) {
+			//Data aus call auslesen und kopieren
 			Data data = ((Data) call.getArguments().getObject(0)).deepCopy();
 			DataUnit du = data.get_dataunit();
 			if (du.getSetField() == DataUnit._Fields.PAGEVIEW) {
