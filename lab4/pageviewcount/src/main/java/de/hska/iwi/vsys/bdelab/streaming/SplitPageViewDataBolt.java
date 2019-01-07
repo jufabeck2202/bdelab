@@ -8,7 +8,7 @@ import org.apache.storm.tuple.Values;
 
 import java.util.Arrays;
 
-public class SplitSentenceBolt extends NoisyBolt {
+public class SplitPageViewDataBolt extends NoisyBolt {
     @Override
     public void execute(Tuple tuple, BasicOutputCollector collector) {
         System.out.println(getIDs() + " executes tuple: " + tuple);

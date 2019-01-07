@@ -16,10 +16,10 @@ public class WordcountTopology {
     private static StormTopology buildTopology(){
         TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout("kafka_spout", new SentenceSpout(), 1);
+        builder.setSpout("kafka_spout", new PageviewSpout(), 1);
 
-        builder.setBolt("split_bolt", new SplitSentenceBolt(), 2)
-                .shuffleGrouping("kafka_spout", SentenceSpout.STREAM_NAME);
+        builder.setBolt("split_bolt", new SplitPageviewBolt(), 2)
+                .shuffleGrouping("kafka_spout", PageviewSpout.STREAM_NAME);
 
         builder.setBolt("count_bolt", new WordCountBolt(), 2)
                 .fieldsGrouping("split_bolt", new Fields("word"));

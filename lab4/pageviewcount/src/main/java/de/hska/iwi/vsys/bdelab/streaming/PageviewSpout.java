@@ -8,14 +8,14 @@ import java.util.Map;
 
 import static org.apache.storm.kafka.spout.KafkaSpoutRetryExponentialBackoff.TimeInterval.*;
 
-class SentenceSpout extends KafkaSpout<String, String> {
+class PageviewSpout extends KafkaSpout<String, String> {
     private static final String KAFKA_SEED_ADDRESS = "iwi-lkit-ux-06:9092";
     private static final String KAFKA_SENTENCE_GROUP_ID = "kafkaSentenceSpoutGroup";
 
     private static final String TOPIC_NAME = "sentence_beju1022";
 
     private static final Fields OUTPUT_FIELDS = new Fields("topic", "partition", "offset", "key", "value");
-    public static final String STREAM_NAME = "sentence_stream";
+    public static final String STREAM_NAME = "pageview_stream";
 
     /**
      * Properties defining consumer connection to Kafka broker
@@ -49,7 +49,7 @@ class SentenceSpout extends KafkaSpout<String, String> {
             .setMaxUncommittedOffsets(250)
             .build();
 
-    SentenceSpout() {
+    PageviewSpout() {
         super(config);
     }
 }
