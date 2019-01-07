@@ -9,22 +9,22 @@ import org.apache.storm.tuple.Values;
 import java.util.HashMap;
 import java.util.Map;
 
-public class WordCountBolt extends NoisyBolt {
+public class PageViewCountBolt extends NoisyBolt {
     private Map<String, Integer> counts = new HashMap<>();
 
     @Override
     public void execute(Tuple tuple, BasicOutputCollector collector) {
         System.out.println(getIDs() + " executes tuple: " + tuple);
 
-        String word = tuple.getString(0);
-        Integer count = counts.get(word);
+        String timedURL = tuple.getString(0);
+        Integer count = counts.get(timedURL);
         if (count == null) {
             count = 0;
         }
         count++;
-        counts.put(word, count);
+        counts.put(timedURL, count);
 
-        Values values = new Values(word, count);
+        Values values = new Values(timedURL, count);
         System.out.println(getIDs() + " result values: " + values);
 
         collector.emit(values);
@@ -32,6 +32,6 @@ public class WordCountBolt extends NoisyBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("word", "count"));
+        declarer.declare(new Fields("timedURL", "count"));
     }
 }

@@ -11,20 +11,22 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-public class WordcountTopology {
+public class PageviewIndexTopology {
 
     private static StormTopology buildTopology(){
         TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout("kafka_spout", new PageviewSpout(), 1);
+        builder.setSpout("pageview_spout", new PageviewSpout(), 1);
 
-        builder.setBolt("split_bolt", new SplitPageviewBolt(), 2)
-                .shuffleGrouping("kafka_spout", PageviewSpout.STREAM_NAME);
+        builder.setBolt("splitpageview_bold", new SplitPageviewBolt(), 2).shuffleGrouping("pageview_spout", PageviewSpout.STREAM_NAME);
 
-        builder.setBolt("count_bolt", new WordCountBolt(), 2)
-                .fieldsGrouping("split_bolt", new Fields("word"));
+
+        builder.setBolt("count_bolt", new PageViewCountBolt(), 2)
+                .fieldsGrouping("splitpageview_bold", new Fields("timedURL"));
 
         return builder.createTopology();
+       
+            
     }
 
     public static void main(String[] args) throws Exception {
@@ -38,11 +40,11 @@ public class WordcountTopology {
             StormSubmitter.submitTopologyWithProgressBar(args[0], conf, topology);
         } else {
             LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology("wordcount", conf, topology);
+            cluster.submitTopology("pageview index", conf, topology);
             try {
                 System.out.println("PRESS ENTER TO STOP");
                 new BufferedReader(new InputStreamReader(System.in)).readLine();
-                cluster.killTopology("wordcount");
+                cluster.killTopology("pageview index");
                 cluster.shutdown();
             } catch (IOException e) {
                 e.printStackTrace();
